@@ -4,7 +4,7 @@ library(LalRUtils)
 libreq(data.table, ggplot2, fixest, tictoc, CVXR, parallel, patchwork, knitr)
 theme_set(lal_plot_theme())
 
-source("R/fns.R")
+source("R/CVXSynth.R")
 
 # %% data prep
 load('Data/ADH2015.RData')
@@ -24,11 +24,13 @@ y_ctrl_pre  = wide[1:T0, -(1:2)] |> as.matrix()
 # %% synthetic control
 ω_sc = sc_solve(y_treat_pre, y_ctrl_pre)
 wt_table = data.frame(donor = colnames(y_ctrl_pre), wt = ω_sc)
+
 # %% compute and plot
 wide2 = copy(wide)
 # impute Y(0) post for treated unit using weights
 wide2$y0_sc = as.matrix(wide2[, -(1:2)]) %*% ω_sc
 wide2$treat_effect = wide2[[treat_name]] - wide2$y0_sc
+
 # %%
 sc_fit = ggplot(wide2, aes(year)) +
   geom_line(aes(y = `West Germany`), size = 2) +
@@ -48,33 +50,34 @@ sc_est = ggplot(wide2, aes(year, treat_effect)) + geom_line() +
 
 # %% DI2016
 en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, 2000)
-
 # %% pseudo-treatment prediction to pick λ
 y_ctrl = wide[, -(1:2)] |> as.matrix() # all control units in matrix
 lambdas = 10^seq(-1, log10(max(y_ctrl)), length.out = 20)
 # %% # for small number of donors, can compute for all ; in other cases, pick randomly?
+# takes ~8 mins
 system.time(
  lam_choices <- mclapply(1:ncol(y_ctrl),
                       pick_lambda, y_ctrl,
                       10^seq(-1, log10(max(y_ctrl)), length.out = 20),
                       T0 = T0,
-                      mc.cores = 6
+                      mc.cores = 6 # parallelise across 6 cores
   )
 )
 # %% # tabulate best lambda and pick the mode
-lam_choices |> as.numeric() |> table()  |> sort() |> tail(1) |> names() |>
+(lam_chosen = lam_choices |> as.numeric() |> table()  |> sort() |> tail(1) |> names() |>
   as.numeric() |> round(2)
+)
+# 2517.62
 ## # %%
 tic()
-en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, 2517.62)
+en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, lam_chosen)
 toc()
 
-# %% compute and plot
+# %% compute treatment effects and plot
 wide3 = copy(wide)
 # impute Y(0) post for treated unit using weights
 wide3$y0_hat_en = as.matrix(cbind(1, wide3[, -(1:2)])) %*% en_ω
 wide3$treat_effect = wide3[[treat_name]] - wide3$y0_hat_en
-
 # %%
 ensc_fit = ggplot(wide3, aes(year)) +
   geom_line(aes(y = `West Germany`), size = 2) +
@@ -91,9 +94,8 @@ ensc_est = ggplot(wide3, aes(year, treat_effect)) + geom_line() +
   labs(title = "ENSC Estimates", y = "")
 
 
-# %%
+# %% compare fig
 (sc_fit | sc_est) / (ensc_fit | ensc_est)
-
 
 # %%
 wt_table2 = data.frame(
