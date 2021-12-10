@@ -4,18 +4,18 @@ library(LalRUtils)
 libreq(data.table, ggplot2, fixest, tictoc, CVXR, parallel, patchwork, knitr)
 theme_set(lal_plot_theme())
 
-source("fns.R")
+source("R/fns.R")
 
 # %% data prep
-load('germany.RData')
-x$country = factor(x$country)
-pan = data.table(x)
+load('Data/ADH2015.RData')
+ADH2015$country = factor(ADH2015$country)
+pan = data.table(ADH2015)
 pan[, treat := ifelse(country == "West Germany" & year >= 1990, 1, 0)]
 treat_name = 'West Germany'
 T0 = pan[country == "West Germany" & treat != 1, nunique(year)]
 T1 = pan[country == "West Germany" & treat == 1, nunique(year)]
-# number of post-treatment periods
-# reshape to wide
+
+# %% # number of post-treatment periods reshape to wide
 wide = pan[, .(country, year, gdp)] |> dcast(year ~ country, value.var = 'gdp')
 setcolorder(wide, c('year', treat_name))
 y_treat_pre = wide[1:T0, 2] |> as.matrix()
@@ -47,6 +47,8 @@ sc_est = ggplot(wide2, aes(year, treat_effect)) + geom_line() +
 (sc_fit | sc_est)
 
 # %% DI2016
+en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, 2000)
+
 # %% pseudo-treatment prediction to pick λ
 y_ctrl = wide[, -(1:2)] |> as.matrix() # all control units in matrix
 lambdas = 10^seq(-1, log10(max(y_ctrl)), length.out = 20)
@@ -59,7 +61,6 @@ system.time(
                       mc.cores = 6
   )
 )
-
 # %% # tabulate best lambda and pick the mode
 lam_choices |> as.numeric() |> table()  |> sort() |> tail(1) |> names() |>
   as.numeric() |> round(2)
@@ -100,3 +101,5 @@ wt_table2 = data.frame(
   wt_sc = c(0, round(ω_sc, 2)) ,
   wt_en =      round(en_ω, 2))
 wt_table2 |> kable()
+
+# %%
