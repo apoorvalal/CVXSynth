@@ -5,8 +5,7 @@ Authors@R:
     person(given = "Apoorva",
            family = "Lal",
            role = c("aut", "cre"),
-           email = "lal.apoorva@.gmail.com",
-           comment = c(ORCID = "0000-0002-3697-614X"))
+           email = "lal.apoorva@.gmail.com")
 Description: Implementation of ADH(2010) and DI(2016) synthetic control method to estimate the ATT for a single treated unit by constructing a synthetic control unit using a weighted average of control units.
 License: MIT + file LICENSE
 Encoding: UTF-8
