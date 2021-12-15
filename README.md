@@ -4,3 +4,10 @@ Implementations of the original synthetic control (Abadie, Diamond, Hainmueller 
 
 + [vignette](https://apoorvalal.github.io/posts/09122021_ElasticNetSyntheticControl.html)
 + [notes](https://apoorvalal.github.io/presentations/pdf/ImbensDoudchenko.pdf)
+
+Installation
+
+```{r}
+library(remotes)
+install_github("apoorvalal/CVXSynth")
+```
