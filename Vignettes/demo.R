@@ -1,10 +1,9 @@
 # %%
 rm(list = ls())
-library(LalRUtils)
-libreq(data.table, ggplot2, fixest, tictoc, CVXR, parallel, patchwork, knitr)
-theme_set(lal_plot_theme())
+library(pacman)
+p_load(data.table, patchwork, ggplot2, CVXSynth, parallel)
 
-source("R/CVXSynth.R")
+theme_set(theme_minimal())
 
 # %% data prep
 load('Data/ADH2015.RData')
@@ -24,7 +23,6 @@ y_ctrl_pre  = wide[1:T0, -(1:2)] |> as.matrix()
 # %% synthetic control
 ω_sc = sc_solve(y_treat_pre, y_ctrl_pre)
 wt_table = data.frame(donor = colnames(y_ctrl_pre), wt = ω_sc)
-
 # %% compute and plot
 wide2 = copy(wide)
 # impute Y(0) post for treated unit using weights
@@ -52,7 +50,7 @@ sc_est = ggplot(wide2, aes(year, treat_effect)) + geom_line() +
 en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, 2000)
 # %% pseudo-treatment prediction to pick λ
 y_ctrl = wide[, -(1:2)] |> as.matrix() # all control units in matrix
-lambdas = 10^seq(-1, log10(max(y_ctrl)), length.out = 20)
+lambdas = 10^seq(-1, log10(max(y_ctrl)), length.out = 10)
 # %% # for small number of donors, can compute for all ; in other cases, pick randomly?
 # takes ~8 mins
 system.time(
@@ -69,9 +67,7 @@ system.time(
 )
 # 2517.62
 ## # %%
-tic()
 en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, lam_chosen)
-toc()
 
 # %% compute treatment effects and plot
 wide3 = copy(wide)
@@ -97,11 +93,11 @@ ensc_est = ggplot(wide3, aes(year, treat_effect)) + geom_line() +
 # %% compare fig
 (sc_fit | sc_est) / (ensc_fit | ensc_est)
 
-# %%
+# %% comparing weights
 wt_table2 = data.frame(
   donor = c('intercept', colnames(y_ctrl_pre)),
   wt_sc = c(0, round(ω_sc, 2)) ,
   wt_en =      round(en_ω, 2))
-wt_table2 |> kable()
+wt_table2
 
 # %%
