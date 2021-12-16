@@ -2,11 +2,10 @@
 rm(list = ls())
 library(pacman)
 p_load(data.table, patchwork, ggplot2, CVXSynth, parallel)
-
 theme_set(theme_minimal())
 
 # %% data prep
-load('Data/ADH2015.RData')
+load('../data-raw/ADH2015.RData')
 ADH2015$country = factor(ADH2015$country)
 pan = data.table(ADH2015)
 pan[, treat := ifelse(country == "West Germany" & year >= 1990, 1, 0)]
