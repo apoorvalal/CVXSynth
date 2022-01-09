@@ -7,7 +7,7 @@ Implementations of the original synthetic control (Abadie, Diamond, Hainmueller 
 
 ## Installation
 
-```{r}
+```R
 library(remotes)
 install_github("apoorvalal/CVXSynth")
 ```
@@ -24,9 +24,7 @@ passed as the `solv` argument for both `sc_solve` and `en_sc_solve` functions.
 
 ## Example
 
-```{r}
-# %%
-rm(list = ls())
+```R
 library(pacman)
 p_load(data.table, patchwork, ggplot2, CVXSynth, parallel)
 theme_set(theme_minimal())
@@ -34,7 +32,7 @@ theme_set(theme_minimal())
 
 ### data prep
 
-```{r}
+```R
 # %% data prep
 load('data-raw/ADH2015.RData')
 ADH2015$country = factor(ADH2015$country)
@@ -59,7 +57,7 @@ matrix.
 `sc_solve` solves for SC weights using constrained regression enforcing
 positivity and summation to 1.
 
-```{r}
+```R
 # %% synthetic control
 ω_sc = sc_solve(y_treat_pre, y_ctrl_pre)
 wt_table = data.frame(donor = colnames(y_ctrl_pre), wt = ω_sc)
@@ -87,7 +85,7 @@ sc_est = ggplot(wide2, aes(year, treat_effect)) + geom_line() +
 ### DI(2016) Elastic Net Synth
 
 
-```{r}
+```R
 # %% DI2016
 en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, 2000)
 # %% pseudo-treatment prediction to pick λ
@@ -110,8 +108,7 @@ system.time(
 # 2517.62
 ```
 
-```{r}
-# %%
+```R
 en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, lam_chosen)
 # %% compute treatment effects and plot
 wide3 = copy(wide)
@@ -134,17 +131,18 @@ ensc_est = ggplot(wide3, aes(year, treat_effect)) + geom_line() +
   labs(title = "ENSC Estimates", y = "")
 ```
 
-```{r}
+### Visualise estimates
+
+```R
 # %% compare fig
 (sc_fit | sc_est) / (ensc_fit | ensc_est)
 ```
 
 ![](fig.png)
 
-### Comparing weights
+### Compare Weights
 
-
-```{r}
+```R
 # %% comparing weights
 wt_table2 = data.frame(
   donor = c('intercept', colnames(y_ctrl_pre)),
