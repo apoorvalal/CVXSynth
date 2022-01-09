@@ -1,8 +1,11 @@
 ---
-title: Original and Modified Synthetic Control from scratch
-subtitle: Implementing Doudchenko, Imbens (2016)
-author: Apoorva Lal
+author: "Apoorva Lal"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteIndexEntry{Original and Modified Synthetic Control from scratch}
+  %\usepackage[UTF-8]{inputenc}
 output:
   html_document:
     self_contained: true
@@ -88,8 +91,9 @@ $\\newcommand{\\pnorm}[1]{\\norm{#1}_p}$
 ```{r global_options, include = F}
 # %%
 rm(list = ls())
+devtools::install_github("apoorvalal/LalRUtils")
 library(LalRUtils)
-libreq(data.table, ggplot2, fixest, tictoc, CVXR,
+libreq(RMosek, data.table, ggplot2, fixest, tictoc, CVXR,
     parallel, patchwork, knitr)
 theme_set(lal_plot_theme())
 
@@ -117,8 +121,8 @@ Data prep - Abadie et al (2015) German Reunification example
 ```{r}
 # %% data prep
 load('germany.RData')
-x$country = factor(x$country)
-pan = data.table(x)
+ADH2015$country = factor(ADH2015$country)
+pan = data.table(ADH2015)
 pan[, treat := ifelse(country == "West Germany" & year >= 1990, 1, 0)]
 treat_name = 'West Germany'
 T0 = pan[country == "West Germany" & treat != 1, nunique(year)]
@@ -183,24 +187,24 @@ Assumes A(1-3) - implemented straightforwardly in the program below.
 #' @import CVXR
 #' @export
 sc_solve = function(y_t, y_c){
-  ω = Variable(ncol(y_c))
-  objective = Minimize(sum_squares(y_t - y_c %*% ω))
+  ohm = Variable(ncol(y_c))
+  objective = Minimize(sum_squares(y_t - y_c %*% ohm))
   constraints = list( # no intercept
-    ω >= 0,            # positive weights
-    sum(ω) == 1        # weights sum to 1
+    ohm >= 0,            # positive weights
+    sum(ohm) == 1        # weights sum to 1
     )
   problem = Problem(objective, constraints)
   result = solve(problem, solver = 'MOSEK')
-  ω_hat = result$getValue(ω)
-  return(ω_hat)
+  ohm_hat = result$getValue(ohm)
+  return(ohm_hat)
 }
 # %%
-ω_sc = sc_solve(y_treat_pre, y_ctrl_pre)
-wt_table = data.frame(donor = colnames(y_ctrl_pre), wt = ω_sc)
+ohm_sc = sc_solve(y_treat_pre, y_ctrl_pre)
+wt_table = data.frame(donor = colnames(y_ctrl_pre), wt = ohm_sc)
 # %% compute and plot
 wide2 = copy(wide)
 # impute Y(0) post for treated unit using weights
-wide2$y0_sc = as.matrix(wide2[, -(1:2)]) %*% ω_sc
+wide2$y0_sc = as.matrix(wide2[, -(1:2)]) %*% ohm_sc
 wide2$treat_effect = wide2[[treat_name]] - wide2$y0_sc
 ```
 
@@ -268,20 +272,20 @@ en_sc_solve = function(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10){
   # sequence of lambdas
   if (is.null(lambdas)) lambdas = 10^seq(-2, log10(max(y_t)), length.out = t)
   # penalty term
-  elastic_penalty = function(ω, λ = 0, α = 0) {
-      lasso =  cvxr_norm(ω, 1) * α
-      ridge =  cvxr_norm(ω, 2) * (1 - α) / 2
+  elastic_penalty = function(ohm, λ = 0, α = 0) {
+      lasso =  cvxr_norm(ohm, 1) * α
+      ridge =  cvxr_norm(ohm, 2) * (1 - α) / 2
       λ * (lasso + ridge)
   }
   # targets : intercept and weights
-  μ = Variable(1) ; ω = Variable(ncol(y_c))
+  μ = Variable(1) ; ohm = Variable(ncol(y_c))
   en_solve = function(l) {
-    obj = (sum_squares(y_t - μ - y_c %*% ω)/(2 * nrow(y_c)) +
-            elastic_penalty(ω, l, alpha) )
+    obj = (sum_squares(y_t - μ - y_c %*% ohm)/(2 * nrow(y_c)) +
+            elastic_penalty(ohm, l, alpha) )
     # unconstrained problem, just apply L1 and L2 regularisation to weights
     prob = Problem(Minimize(obj))
     sol = solve(prob, solver = 'MOSEK')
-    sols = c(sol$getValue(μ), sol$getValue(ω))
+    sols = c(sol$getValue(μ), sol$getValue(ohm))
   }
   # solve for each value of lambda
   solution_mat = lapply(lambdas, en_solve)
@@ -334,14 +338,14 @@ pick_lambda = function(j, Y, lambdas){
   # pre period data
   ypre = head(Y, T0)
   y_j  = ypre[, j]; y_nj = ypre[, -j]
-  # fit μ, ω for pseudo-treatment unit
-  ω_tilde = en_sc_solve(y_j, y_nj, lambdas)
+  # fit μ, ohm for pseudo-treatment unit
+  ohm_tilde = en_sc_solve(y_j, y_nj, lambdas)
   # compute prediction error on post-period
   ypost = tail(Y, T1)
   mse_j = function(w) mean(ypost[, j] - cbind(1, ypost[, -j])  %*% w)
-  # each column in ω_tilde is a set of weights and intercepts for a given λ, so
+  # each column in ohm_tilde is a set of weights and intercepts for a given λ, so
   # summarise across columns
-  mses = apply(ω_tilde, 2, mse_j)
+  mses = apply(ohm_tilde, 2, mse_j)
   # lambda that minimises error
   lambdas[which(mses == min(mses))]
 }
@@ -364,7 +368,7 @@ Use the above $\lambda$ to fit Elastic-net synthetic control
 
 ```{r}
 tic()
-en_ω = en_sc_solve(y_treat_pre, y_ctrl_pre, 2517.62)
+en_ohm = en_sc_solve(y_treat_pre, y_ctrl_pre, 2517.62)
 toc()
 ```
 
@@ -373,7 +377,7 @@ toc()
 # %% compute and plot
 wide3 = copy(wide)
 # impute Y(0) post for treated unit using weights
-wide3$y0_hat_en = as.matrix(cbind(1, wide3[, -(1:2)])) %*% en_ω
+wide3$y0_hat_en = as.matrix(cbind(1, wide3[, -(1:2)])) %*% en_ohm
 wide3$treat_effect = wide3[[treat_name]] - wide3$y0_hat_en
 
 # %%
@@ -410,7 +414,7 @@ This appears not to matter in this example, but may help in others.
 ```{r}
 wt_table2 = data.frame(
   donor = c('intercept', colnames(y_ctrl_pre)),
-  wt_sc = c(0, round(ω_sc, 2)) ,
-  wt_en =      round(en_ω, 2))
+  wt_sc = c(0, round(ohm_sc, 2)) ,
+  wt_en =      round(en_ohm, 2))
 wt_table2 |> kable()
 ```
