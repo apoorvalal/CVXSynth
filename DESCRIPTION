@@ -9,4 +9,19 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
+Depends:
+    R (>= 3.5.0)
+Imports: 
+    CVXR,
+    Rmosek
+VignetteBuilder: knitr
+Suggests:
+    knitr (>= 1.11),
+    testthat,
+    rmarkdown,
+    lintr,
+    LalRUtils,
+    devtools
+Remotes:
+    apoorvalal/LalRUtils

@@ -4,7 +4,7 @@
 \alias{en_sc_solve}
 \title{Solve for Imbens-Doudchenko elastic net synthetic control weights in CVXR}
 \usage{
-en_sc_solve(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10)
+en_sc_solve(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10, solv = "MOSEK")
 }
 \arguments{
 \item{y_t}{t_0 X 1   matrix of pre-treatment outcomes for treatment units}
@@ -16,6 +16,8 @@ en_sc_solve(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10)
 \item{alpha}{scalar mixing value between L1 and L2 regularisation}
 
 \item{t}{number of lambdas to try (when range not manually specified)}
+
+\item{solv}{what solver to use. default is mosek}
 }
 \value{
 vector of weights

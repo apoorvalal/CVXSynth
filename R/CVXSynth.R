@@ -1,12 +1,23 @@
+#' @title \pkg{CVXSynth} provides a way to run synthetic control using CVXR.
+#'
+#' @description \pkg{CVXSynth} provides a way to run synthetic control using CVXR.
+#'
+#' @name CVXSynth
+#' @importFrom utils head tail
+#' @importFrom CVXR  Minimize sum_squares Problem solve Variable
+#' @importFrom devtools install_github
+#' @docType package
+NULL
+
 # %%
 #' Solve for synthetic control weights in CVXR
 #' @param y_t t_0 X 1   matrix of pre-treatment outcomes for treatment units
 #' @param y_c t_0 X n_0 matrix of pre-treatment outcomes for donor units
+#' @param solv what solver to use. default is mosek
 #' @return vector of weights
 #' @import CVXR
 #' @export
 sc_solve = function(y_t, y_c, solv = 'MOSEK'){
-  require(CVXR)
   o = Variable(ncol(y_c))
   objective = Minimize(sum_squares(y_t - y_c %*% o))
   constraints = list( # no intercept
@@ -27,6 +38,7 @@ sc_solve = function(y_t, y_c, solv = 'MOSEK'){
 #' @param lambdas       vector of penalty values
 #' @param alpha         scalar mixing value between L1 and L2 regularisation
 #' @param t             number of lambdas to try (when range not manually specified)
+#' @param solv what solver to use. default is mosek
 #' @return vector of weights
 #' @import CVXR
 #' @export
@@ -41,7 +53,6 @@ en_sc_solve = function(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10,
       lam * (lasso + ridge)
   }
   # targets : intercept and weights
-  require(CVXR)
   mu = Variable(1) ; o = Variable(ncol(y_c))
   en_solve = function(l) {
     obj = (sum_squares(y_t - mu - y_c %*% o)/(2 * nrow(y_c)) +
@@ -75,7 +86,7 @@ pick_lambda = function(j, Y, lambdas, T0){
   # fit mu, o for pseudo-treatment unit
   o_tilde = en_sc_solve(y_j, y_nj, lambdas)
   # compute prediction error on post-period
-  ypost = tail(Y, T1)
+  ypost = tail(Y,  (nrow(Y) - T0))
   mse_j = function(w) mean(ypost[, j] - cbind(1, ypost[, -j])  %*% w)
   # each column in o_tilde is a set of weights and intercepts for a given lam, so
   # summarise across columns
