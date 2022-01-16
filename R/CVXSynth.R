@@ -34,7 +34,6 @@ sc_solve = function(y_t, y_c, solv = 'MOSEK'){
 #' Solve for Imbens-Doudchenko elastic net synthetic control weights in CVXR
 #' @param y_t t_0 X 1   matrix of pre-treatment outcomes for treatment units
 #' @param y_c t_0 X n_0 matrix of pre-treatment outcomes for donor units
-#' @param y_c t_0 X n_0 matrix of pre-treatment outcomes for donor units
 #' @param lambdas       vector of penalty values
 #' @param alpha         scalar mixing value between L1 and L2 regularisation
 #' @param t             number of lambdas to try (when range not manually specified)
@@ -48,8 +47,8 @@ en_sc_solve = function(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10,
   if (is.null(lambdas)) lambdas = 10^seq(-2, log10(max(y_t)), length.out = t)
   # penalty term
   elastic_penalty = function(o, lam = 0, alph = 0) {
-      lasso =  cvxr_norm(o, 1) * alph
-      ridge =  cvxr_norm(o, 2) * (1 - alph) / 2
+      lasso =  cvxr_norm(o, 1) * alph                   # l1 norm
+      ridge =  cvxr_norm(o, 2) * (1 - alph) / 2         # l2 norm
       lam * (lasso + ridge)
   }
   # targets : intercept and weights
@@ -71,12 +70,13 @@ en_sc_solve = function(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10,
 }
 
 # %% ####################################################
-#' Choose regularisation parameter that minimises pseudo-treatment prediction error
+#' Choose regularisation parameter that minimises pseudo-treatment prediction error for
+#' Doudchenko Imbens (2016) estimator
 #' @param j  index of pseudo-treatment unit
 #' @param Y  matrix of control outcomes (wide, where each column is a series)
 #' @param lambdas sequence of lambda parameters
 #' @param T0 number of pre-treatment periods
-#' @return value of lambda that minimises prediction error
+#' @return value of lambda that minimises prediction error for pseudo-treatment
 #' @export
 
 pick_lambda = function(j, Y, lambdas, T0){

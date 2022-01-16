@@ -2,7 +2,8 @@
 % Please edit documentation in R/CVXSynth.R
 \name{pick_lambda}
 \alias{pick_lambda}
-\title{Choose regularisation parameter that minimises pseudo-treatment prediction error}
+\title{Choose regularisation parameter that minimises pseudo-treatment prediction error for
+Doudchenko Imbens (2016) estimator}
 \usage{
 pick_lambda(j, Y, lambdas, T0)
 }
@@ -16,8 +17,9 @@ pick_lambda(j, Y, lambdas, T0)
 \item{T0}{number of pre-treatment periods}
 }
 \value{
-value of lambda that minimises prediction error
+value of lambda that minimises prediction error for pseudo-treatment
 }
 \description{
-Choose regularisation parameter that minimises pseudo-treatment prediction error
+Choose regularisation parameter that minimises pseudo-treatment prediction error for
+Doudchenko Imbens (2016) estimator
 }
