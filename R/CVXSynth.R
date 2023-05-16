@@ -17,7 +17,7 @@ NULL
 #' @return vector of weights
 #' @import CVXR
 #' @export
-sc_solve = function(y_t, y_c, solv = 'MOSEK'){
+sc_solve = function(y_t, y_c, solv = 'GUROBI') {
   o = Variable(ncol(y_c))
   objective = Minimize(sum_squares(y_t - y_c %*% o))
   constraints = list( # no intercept
@@ -42,7 +42,7 @@ sc_solve = function(y_t, y_c, solv = 'MOSEK'){
 #' @import CVXR
 #' @export
 en_sc_solve = function(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10,
-    solv = 'MOSEK'){
+    solv = 'GUROBI') {
   # sequence of lambdas
   if (is.null(lambdas)) lambdas = 10^seq(-2, log10(max(y_t)), length.out = t)
   # penalty term
@@ -79,12 +79,12 @@ en_sc_solve = function(y_t, y_c, lambdas = NULL, alpha = 0.5, t = 10,
 #' @return value of lambda that minimises prediction error for pseudo-treatment
 #' @export
 
-pick_lambda = function(j, Y, lambdas, T0){
+pick_lambda = function(j, Y, lambdas, T0, solv = "GUROBI") {
   # pre period data
   ypre = head(Y, T0)
   y_j  = ypre[, j]; y_nj = ypre[, -j]
   # fit mu, o for pseudo-treatment unit
-  o_tilde = en_sc_solve(y_j, y_nj, lambdas)
+  o_tilde = en_sc_solve(y_j, y_nj, lambdas, solv = solv)
   # compute prediction error on post-period
   ypost = tail(Y,  (nrow(Y) - T0))
   mse_j = function(w) mean(ypost[, j] - cbind(1, ypost[, -j])  %*% w)
